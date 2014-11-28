@@ -14,7 +14,10 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#define BUFFER_LIM 512
+
 int num_packets = 0;
+int port = 9876;
 char *host = 0;
 
 
@@ -26,13 +29,9 @@ void error(const char *msg) {
 int receive_num_packets(char *argv[]) {
 	int sockfd, newsockfd, portno;
 	socklen_t clilen;
-	char buffer[MAX_BUFFER];
+	char buffer[BUFFER_LIM];
 	struct sockaddr_in serv_addr, cli_addr;
 	int n;
-	if (argc < 2) {
-		fprintf(stderr, "ERR: No port given\n");
-		exit(1);
-	}
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		error("cant open socket");
@@ -51,13 +50,13 @@ int receive_num_packets(char *argv[]) {
 	if (newsockfd < 0) {
 		error("error on accept");
 	}
-	bzero(buffer, 256);
-	n = read(newsockfd, buffer, 255);
+	bzero(buffer, BUFFER_LIM);
+	n = read(newsockfd, buffer, BUFFER_LIM);
 	if (n < 0) {
 		error("err reading from socket");
 	}
 	printf("here is the message: %s\n", buffer);
-	n = write(newsockfd, "got message", 18);
+	n = write(newsockfd, "received number of packets", BUFFER_LIM);
 	if (n < 0) {
 		error("err writing to socket");
 	}
@@ -72,7 +71,7 @@ int receive_datagram(char *argv[]) {
 	socklen_t fromlen;
 	struct sockaddr_in server;
 	struct sockaddr_in from;
-	char buffer[MAX_BUFFER];
+	char buffer[BUFFER_LIM];
 
 	sock=socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) error("error opening udp socket");
@@ -84,12 +83,14 @@ int receive_datagram(char *argv[]) {
 	if (bind(sock,(struct sockaddr *)&server,length)<0) 
 		error("binding");
 	fromlen = sizeof(struct sockaddr_in);
+	int datagram_count = 0;
 	while (1) {
 		n = recvfrom(sock,buffer,1024,0,(struct sockaddr *)&from,&fromlen);
 		if (n < 0) error("recvfrom");
 		write(1, "received datagram: ", 19);
-		write(1, buf, n);
-		n = sendto(sock,"received message\n", 17, 0, (struct sockaddr *)&from, fromlen);
+		write(1, buffer, n);
+		write(1, "\n", 1);
+		n = sendto(sock,"received datagram\n", 18, 0, (struct sockaddr *)&from, fromlen);
 		if (n < 0) {
 			error("error with sendto()");
 		}
@@ -98,12 +99,14 @@ int receive_datagram(char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-	if (argc < 1) {
+	if (argc < 2) {
 		fprintf(stderr, "usage: ./server port\n");
 		exit(0);
 	}
+	port = atoi(argv[1]);
 
+	// receive_num_packets(argv);
+	receive_datagram(argv);
 
-
+	return 0;
 }
-

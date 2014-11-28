@@ -14,51 +14,100 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
+#define BUFFER_LIM 512
+
+int num_packets = 0;
+char *host = 0;
+
 void error(const char *msg)
 {
-    perror(msg);
-    exit(0);
+	perror(msg);
+	exit(0);
+}
+
+int send_num_packets(int num_packets) {
+	int sockfd, portno, n;
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
+
+	char buffer[256];
+	portno = atoi(argv[2]);
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0) 
+		error("error opening udp socket");
+	server = gethostbyname(argv[1]);
+	if (server == NULL) {
+		fprintf(stderr,"error host doesnt exist\n");
+		exit(0);
+	}
+	bzero((char *) &serv_addr, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, 
+			(char *)&serv_addr.sin_addr.s_addr,
+			server->h_length);
+	serv_addr.sin_port = htons(portno);
+	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+		error("error connecting to server");
+	printf("Please enter the message: ");
+	bzero(buffer,256);
+	fgets(buffer,255,stdin);
+	n = write(sockfd, num_packets, strlen(num_packets));
+	if (n < 0) 
+		error("error writing to udp socket\n");
+	bzero(buffer,256);
+	n = read(sockfd,buffer,255);
+	if (n < 0) 
+		error("error reading from udp socket\n");
+	printf("%s\n",buffer);
+	close(sockfd);
+	return 0;
+}
+
+int send_datagram(char *argv[]) {
+	int sock, n;
+	unsigned int length;
+	struct sockaddr_in server, from;
+	struct hostent *hp;
+	char buffer[BUFFER_LIM];
+
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) error("socket error");
+
+	server.sin_family = AF_INET;
+	hp = gethostbyname(argv[1]);
+	if (hp==0) error("Unknown host");
+
+	bcopy((char *)hp->h_addr, 
+			(char *)&server.sin_addr,
+			hp->h_length);
+	server.sin_port = htons(atoi(argv[2]));
+	length=sizeof(struct sockaddr_in);
+	// printf("message to send: ");
+	bzero(buffer, BUFFER_LIM);
+	// fgets(buffer, BUFFER_LIM, argv[3]);
+	// buffer = argv[3];
+	for (int count = 1; count <= atoi(argv[4]); count++) {
+		n=sendto(sock, argv[3],
+				strlen(argv[3]),0,(const struct sockaddr *)&server,length);
+		if (n < 0) error("Sendto");
+		n = recvfrom(sock,buffer,256,0,(struct sockaddr *)&from, &length);
+		if (n < 0) error("recvfrom");
+		write(1,"server response: ", 17);
+		write(1, buffer, n);
+	}
+	close(sock);
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+	if (argc < 2) {
+		fprintf(stderr, "usage: ./client host port message count\n");
+		exit(0);
+	}
+	return send_num_packets(argv[4]) + send_datagram(argv);
+	// send_datagram(argv);
 
-    char buffer[256];
-    if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
-       exit(0);
-    }
-    portno = atoi(argv[2]);
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("error opening udp socket");
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr,"error host doesnt exist\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-        error("error connecting to server");
-    printf("Please enter the message: ");
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
-    n = write(sockfd,buffer,strlen(buffer));
-    if (n < 0) 
-         error("error writing to udp socket\n");
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
-    if (n < 0) 
-         error("error reading from udp socket\n");
-    printf("%s\n",buffer);
-    close(sockfd);
-    return 0;
+	return 0;
+
 }
