@@ -74,7 +74,7 @@ int send_datagram(char *argv[]) {
 	if (sock < 0) error("socket error");
 
 	server.sin_family = AF_INET;
-	hp = gethostbyname(argv[1]);
+	hp = gethostbyname(host);
 	if (hp==0) error("Unknown host");
 
 	bcopy((char *)hp->h_addr, 
@@ -105,6 +105,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "usage: ./client host port message count\n");
 		exit(0);
 	}
+
+	host = argv[1];
 	return send_num_packets(argv[4]) + send_datagram(argv);
 	// send_datagram(argv);
 

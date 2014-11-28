@@ -17,7 +17,7 @@
 #define BUFFER_LIM 512
 
 int num_packets = 0;
-int port = 9876;
+int port = 9876; // default port
 char *host = 0;
 
 
@@ -55,8 +55,8 @@ int receive_num_packets(char *argv[]) {
 	if (n < 0) {
 		error("err reading from socket");
 	}
-	printf("here is the message: %s\n", buffer);
-	n = write(newsockfd, "received number of packets", BUFFER_LIM);
+	printf("msg recvd: %s\n", buffer);
+	n = write(newsockfd, "received number of packets\n", 27);
 	if (n < 0) {
 		error("err writing to socket");
 	}
@@ -79,7 +79,7 @@ int receive_datagram(char *argv[]) {
 	bzero(&server,length);
 	server.sin_family=AF_INET;
 	server.sin_addr.s_addr=INADDR_ANY;
-	server.sin_port=htons(atoi(argv[1]));
+	server.sin_port=htons(port);
 	if (bind(sock,(struct sockaddr *)&server,length)<0) 
 		error("binding");
 	fromlen = sizeof(struct sockaddr_in);
@@ -90,6 +90,7 @@ int receive_datagram(char *argv[]) {
 		write(1, "received datagram: ", 19);
 		write(1, buffer, n);
 		write(1, "\n", 1);
+		datagram_count++;
 		n = sendto(sock,"received datagram\n", 18, 0, (struct sockaddr *)&from, fromlen);
 		if (n < 0) {
 			error("error with sendto()");
@@ -106,7 +107,9 @@ int main(int argc, char *argv[]) {
 	port = atoi(argv[1]);
 
 	// receive_num_packets(argv);
-	receive_datagram(argv);
+	// receive_datagram(argv);
+	
+	return receive_num_packets(argv) + receive_datagram(argv);
 
 	return 0;
 }
