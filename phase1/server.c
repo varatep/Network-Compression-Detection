@@ -27,24 +27,25 @@ void error(const char *msg) {
 }
 
 int receive_num_packets(char *argv[]) {
-	int sockfd, newsockfd, portno;
+	int sockfd, newsockfd;
+
 	socklen_t clilen;
 	char buffer[BUFFER_LIM];
 	struct sockaddr_in serv_addr, cli_addr;
 	int n;
+	// tcp socket
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		error("cant open socket");
 	}
 	bzero((char *) &serv_addr, sizeof(serv_addr));
-	portno = atoi(argv[1]);
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(portno);
+	serv_addr.sin_port = htons(port);
 	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-		error("err on binding");
+		error("error on binding");
 	}
-	listen(sockfd, 5);
+	listen(sockfd, 10);
 	clilen = sizeof(cli_addr);
 	newsockfd = accept( sockfd, (struct sockaddr *) &cli_addr, &clilen);
 	if (newsockfd < 0) {
@@ -53,15 +54,19 @@ int receive_num_packets(char *argv[]) {
 	bzero(buffer, BUFFER_LIM);
 	n = read(newsockfd, buffer, BUFFER_LIM);
 	if (n < 0) {
-		error("err reading from socket");
+		error("error reading from socket");
 	}
 	printf("msg recvd: %s\n", buffer);
+	num_packets = atoi(buffer);
 	n = write(newsockfd, "received number of packets\n", 27);
 	if (n < 0) {
-		error("err writing to socket");
+		error("error writing to socket");
 	}
+	// printf("closing newsock");
 	close(newsockfd);
+	//printf("\nclosing sockfd");
 	close(sockfd);
+	//printf("closed sockfd");
 
 	return 0;
 }
@@ -84,17 +89,23 @@ int receive_datagram(char *argv[]) {
 		error("binding");
 	fromlen = sizeof(struct sockaddr_in);
 	int datagram_count = 0;
+	int count = 0;
+	printf("num packets: %d", num_packets);
 	while (1) {
 		n = recvfrom(sock,buffer,1024,0,(struct sockaddr *)&from,&fromlen);
 		if (n < 0) error("recvfrom");
 		write(1, "received datagram: ", 19);
-		write(1, buffer, n);
+		// need to see what's going on with buffer. numpacks gets written as well.
+		write(1, buffer, sizeof(buffer));
 		write(1, "\n", 1);
 		datagram_count++;
 		n = sendto(sock,"received datagram\n", 18, 0, (struct sockaddr *)&from, fromlen);
 		if (n < 0) {
 			error("error with sendto()");
 		}
+	//	write(1, count, 1);
+		if (count == num_packets)
+			return 0;
 	}
 	return 0;	
 }
@@ -106,10 +117,17 @@ int main(int argc, char *argv[]) {
 	}
 	port = atoi(argv[1]);
 
-	// receive_num_packets(argv);
+	//receive_num_packets(argv);
+	if (receive_num_packets(argv) != 0) {
+		printf("error occurred\n");
+	}
+	else {
+		receive_datagram(argv);
+	}
 	// receive_datagram(argv);
 	
-	return receive_num_packets(argv) + receive_datagram(argv);
+	//return receive_num_packets(argv) + receive_datagram(argv);
+	//printf("about to return 0 server");
 
 	return 0;
 }

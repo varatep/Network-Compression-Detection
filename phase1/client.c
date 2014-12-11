@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -25,7 +26,7 @@ void error(const char *msg)
 	exit(0);
 }
 
-int send_num_packets(int num_packets) {
+int send_num_packets(char *argv[]) {
 	int sockfd, portno, n;
 	struct sockaddr_in serv_addr;
 	struct hostent *server;
@@ -35,7 +36,7 @@ int send_num_packets(int num_packets) {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) 
 		error("error opening udp socket");
-	server = gethostbyname(argv[1]);
+	server = gethostbyname(host);
 	if (server == NULL) {
 		fprintf(stderr,"error host doesnt exist\n");
 		exit(0);
@@ -45,20 +46,32 @@ int send_num_packets(int num_packets) {
 	bcopy((char *)server->h_addr, 
 			(char *)&serv_addr.sin_addr.s_addr,
 			server->h_length);
+	//printf("%u", serv_addr.sin_addr.s_addr);
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+	printf("%u", serv_addr.sin_addr.s_addr);
 	serv_addr.sin_port = htons(portno);
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
 		error("error connecting to server");
-	printf("Please enter the message: ");
-	bzero(buffer,256);
-	fgets(buffer,255,stdin);
-	n = write(sockfd, num_packets, strlen(num_packets));
+	// printf("Please enter the message: ");
+	// bzero(buffer,256);
+	// fgets(buffer, 255, num_packets);
+	// (void) strncpy(buffer, itoa(num_packets), BUFFER_LIM);
+	//sprintf(buffer, 10, "%d"(num_packets, buffer, 10);
+	snprintf(buffer, 10, "%d", num_packets);
+	printf("writing sockfd\n");
+	
+	n = write(sockfd, buffer, strlen(buffer));
+	// no ack
+	/*
 	if (n < 0) 
 		error("error writing to udp socket\n");
-	bzero(buffer,256);
-	n = read(sockfd,buffer,255);
+	bzero(buffer, BUFFER_LIM);
+	
+	n = read(sockfd,buffer,BUFFER_LIM);
 	if (n < 0) 
 		error("error reading from udp socket\n");
-	printf("%s\n",buffer);
+	printf("ack: %s packets\n",buffer);*/
 	close(sockfd);
 	return 0;
 }
@@ -74,7 +87,7 @@ int send_datagram(char *argv[]) {
 	if (sock < 0) error("socket error");
 
 	server.sin_family = AF_INET;
-	hp = gethostbyname(host);
+	hp = gethostbyname(argv[1]);
 	if (hp==0) error("Unknown host");
 
 	bcopy((char *)hp->h_addr, 
@@ -107,7 +120,18 @@ int main(int argc, char *argv[])
 	}
 
 	host = argv[1];
-	return send_num_packets(argv[4]) + send_datagram(argv);
+	num_packets = atoi(argv[4]);
+	//send_num_packets(argv);
+	//send_datagram(argv);
+
+	if (send_num_packets(argv) != 0) {
+		printf("error has occurred\n");
+	}
+	else {
+		send_datagram(argv);
+	}
+	//printf("returning 0");
+	//return send_num_packets(argv) + send_datagram(argv);
 	// send_datagram(argv);
 
 	return 0;
