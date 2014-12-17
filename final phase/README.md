@@ -1,6 +1,5 @@
 COMP 429 Fall 2014 Programming Assignment 2
 End-to-End Detection of Network Compression
-Due: December 7th, 2014 at 21:00
 Your final project has been broken up modularly to simplify your progression and development of the complete
 system. Through this project, you will have an application that will be able to detect compression on intermediate
 nodes between you and a host.
